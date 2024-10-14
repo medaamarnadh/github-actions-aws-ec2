@@ -1,0 +1,44 @@
+name: Deploy React App
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Step 2: Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18' # Specify Node.js version 18
+
+      # Step 3: Install dependencies and build the React app
+      - name: Install dependencies and build
+        run: |
+          npm install --legacy-peer-deps
+          npm run build
+
+      # Step 4: Set up SSH
+      # Setting up SSH private key to the GitHub Actions container
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ secrets.HOST }}" >> ~/.ssh/known_hosts
+
+      # Step 5: Copy the build folder to the EC2 instance and restart Nginx
+      # The following command transfers build files to the ec2 instance which is running with Nginx
+      # You can addd customised ubuntu or linux commands based on the platform you choose.
+      - name: Deploy to EC2
+        run: |
+          scp -r -o StrictHostKeyChecking=no build/* "${{ secrets.USER }}@${{ secrets.HOST }}:<ec2 instance location>"
+          sudo systemctl restart nginx"
